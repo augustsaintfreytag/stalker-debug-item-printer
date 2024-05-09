@@ -18,7 +18,7 @@ Depending on your set-up, the output directory may be one of the following:
 
 The output Markdown file has one section for each item. It resolves the localized name of every section to use as a heading (e.g. a heading for `glucose_s` will be `Glucose Shot`). The configured properties appear as rows in *Property, Value* form. Both string and numeric values are supported as values in the table.
 
-(Example Image)
+![Debug Printer Example 03](https://github.com/augustsaintfreytag/stalker-debug-item-printer/assets/7656669/d14f9cb7-ea48-4c09-966d-361fc250e0e6)
 
 ## License
 
