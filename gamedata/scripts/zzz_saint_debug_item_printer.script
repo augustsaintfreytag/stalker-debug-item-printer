@@ -1,3 +1,10 @@
+-- Configuration
+
+local filter_kind = "i_medical"				-- Any section `kind`, e.g. i_tool, i_repair, i_medical, i_food, w_ammo, o_light, o_heavy
+local include_bhs_properties = true;		-- Include `zzz_player_injuries` BHS values with regular properties
+
+-- Properties
+
 local item_properties = {
 	"tier",
 	"cost",
@@ -29,10 +36,6 @@ local item_properties = {
 }
 
 local item_effect_properties_designations = {
-	-- ["eat_satiety"] = "Satiety",
-	-- ["eat_thirstiness"] = "Thirst",
-	-- ["eat_alcohol"] = "Alcohol",
-	-- ["eat_sleepiness"] = "Sleepiness",
 	["boost_max_weight"] = "Carry Weight",
 	["boost_health_restore"] = "Health Restore",
 	["boost_power_restore"] = "Power Restore",
@@ -56,9 +59,9 @@ local item_effect_properties_designations = {
 	["bhs_painkillerlist"] = "Painkiller"
 }
 
-function normalized_effect_value(property, value)
-	-- local native_magnitude = utils_ui.stats_table[property] and utils_ui.stats_table[property].magnitude or 1
-	-- local adjusted_value = value * native_magnitude
+-- Value Sorting & Processing
+
+function normalized_effect_value_for_sorting(property, value)
 	local adjusted_value = math.abs(value)
 
 	if property == "bhs_healonelist" then
@@ -81,7 +84,7 @@ function get_sorted_effect_properties(section)
 		local value = get_any_item_value(section, property)
 
 		if not is_empty(value) then
-			local normalized_value = normalized_effect_value(property, value)
+			local normalized_value = normalized_effect_value_for_sorting(property, value)
 
 			if normalized_value ~= 0 then
 				table.insert(sorted_properties, { property, normalized_value })
@@ -95,12 +98,13 @@ function get_sorted_effect_properties(section)
 
 	for _, property in ipairs(sorted_properties) do
 		local property_key = property[1]
-		-- local property_designation = item_effect_properties_designations[property_key]
 		table.insert(sorted_property_names, property_key)
 	end
 
 	return sorted_property_names
 end
+
+-- Value Readout
 
 function get_any_item_value(section, property)
 	if string.match(property, "bhs_") then
@@ -115,9 +119,9 @@ function get_regular_item_value(section, property)
 end
 
 function get_bhs_item_value(section, property)
-	-- if not zzz_player_injuries or not zzz_player_injuries.healonelist or not zzz_player_injuries.splintlist or not zzz_player_injuries.surgeryamount or not zzz_player_injuries.painkillerlist then
-	-- 	return nil
-	-- end
+	if not zzz_player_injuries or not zzz_player_injuries.healonelist or not zzz_player_injuries.splintlist or not zzz_player_injuries.surgeryamount or not zzz_player_injuries.painkillerlist then
+		return nil
+	end
 
 	if property == "bhs_healonelist" then
 		if zzz_player_injuries.healonelist[section] then
@@ -148,6 +152,8 @@ function get_bhs_item_value(section, property)
 	return nil
 end
 
+-- Printing
+
 function print_medical_item_stats()
 	local log_file = io.open("saint_item_data.md", "a")
 	local number_of_items = 0
@@ -158,8 +164,7 @@ function print_medical_item_stats()
 		local section_class = ini_sys:r_string_ex(section, "class")
 		local section_kind = ini_sys:r_string_ex(section, "kind")
 
-		--if section_class ~= "II_FOOD" and section_kind ~= "i_medical" then
-		if section_kind ~= "i_medical" or string.match(section, "mp_") or string.match(section, "_script") then
+		if section_kind ~= filter_kind or string.match(section, "mp_") or string.match(section, "_script") then
 			return
 		end
 
@@ -177,7 +182,6 @@ function print_medical_item_stats()
 		local pairs = {}
 
 		for _, property in ipairs(item_properties) do
-			-- local value = ini_sys:r_string_ex(section, property)
 			local value = get_regular_item_value(section, property)
 
 			if value and value ~= 0 then
@@ -185,11 +189,13 @@ function print_medical_item_stats()
 			end
 		end
 
-		for _, property in ipairs({ "bhs_healonelist", "bhs_splintlist", "bhs_surgerylist", "bhs_painkillerlist" }) do
-			local value = get_bhs_item_value(section, property)
+		if include_bhs_properties then
+			for _, property in ipairs({ "bhs_healonelist", "bhs_splintlist", "bhs_surgerylist", "bhs_painkillerlist" }) do
+				local value = get_bhs_item_value(section, property)
 
-			if value and value ~= 0 then
-				table.insert(pairs, { property, value })
+				if value and value ~= 0 then
+					table.insert(pairs, { property, value })
+				end
 			end
 		end
 
@@ -229,8 +235,10 @@ function print_medical_item_stats()
 		log_file:write("\n" .. table.concat(lines, "\n") .. "\n")
 	end)
 
-	log_file:write("\nMedical items found: " .. number_of_items .. " item(s)\n")
+	log_file:write("\nTotal items processed: " .. number_of_items .. " item(s)\n")
 end
+
+-- Utility Functions
 
 function is_empty(str)
 	return str == nil or str == "" or str == "0" or str == "0.0"
